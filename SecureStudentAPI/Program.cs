@@ -17,6 +17,33 @@ using System.Threading.RateLimiting;
 var builder = WebApplication.CreateBuilder(args);
 
 // ===============================
+// 0) CORS
+// ===============================
+var allowedOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>() ?? Array.Empty<string>();
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("CorsPolicy", policy =>
+    {
+        if (allowedOrigins.Length == 0)
+        {
+            policy
+                .AllowAnyOrigin()
+                .AllowAnyHeader()
+                .AllowAnyMethod();
+            return;
+        }
+
+        policy
+            .WithOrigins(allowedOrigins)
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
+
+// ===============================
 // 1) Authentication (JWT Bearer)
 // ===============================
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -130,6 +157,7 @@ if (app.Environment.IsDevelopment())
 // });
 
 app.UseHttpsRedirection();
+app.UseCors("CorsPolicy");
 
 // ✅ NEW: Rate limiting should run early (before controllers)
 app.UseRateLimiter();
